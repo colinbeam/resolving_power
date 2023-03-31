@@ -6,27 +6,17 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 library(tidyverse)
 library(kableExtra)
 library(PRROC)
 library(boot)
 library(egg)
-```
-
-```{r}
-# initialize figure and table numbers
-fnum <- 1
-tnum <- 1
-eqnum <- 1
-footnote_num <- 1
-
+library(tinytex)
+library(distill)
 ```
 
 ```{r plotting parameters}
-# caption title size
-caption_size <- 10
-
 # legend text size
 axis.text.x.size <- 12
 legend.text.size <- 12
@@ -40,7 +30,7 @@ This technical supplement contains all of the code used for the resolving power 
 
 ## 2. ROC and PR curves
 
-```{r confusion matrix}
+```{r confusion_matrix}
 confusion_matrix <- matrix(nrow = 3, ncol=2)
 colnames(confusion_matrix) <- c("actual +", "actual -")
 rownames(confusion_matrix) <- c("predicted +", "predicted -", "total")
@@ -49,18 +39,13 @@ confusion_matrix[1,] <- c("TP", "FP")
 confusion_matrix[2,] <- c("FN", "TN")
 confusion_matrix[3,] <- c("P", "N")
 
-figure_title <- paste0("Figure ", fnum, ". An example confusion matrix")
-
-kableExtra::kbl(confusion_matrix) %>% 
-  kable_styling(bootstrap_options = "bordered", full_width = F, position = "float_right") %>% 
-  footnote(general_title="", general = figure_title, title_format = "italic") %>% 
-  row_spec(0,bold=TRUE) %>% 
+kableExtra::kbl(confusion_matrix, caption = "An example confusion matrix", format = "latex", escape = FALSE, align = "c") %>% 
+  kable_styling(latex_options = "hold_position") %>% 
+  row_spec(0, bold=TRUE) %>% 
   column_spec(1, bold = TRUE)
 
-fnum <- fnum+1  
-
-
 ```
+
 
 ## 3. Mapping between metrics
 
@@ -109,10 +94,7 @@ male_data <- male_data %>%
   mutate(y = dnorm(cm, mean = male_mean, sd = male_sd),
          distribution = "Men")
 
-height_fnum <- fnum
 plot_data <- bind_rows(female_data, male_data)
-
-plot_title <- paste0("Figure ", height_fnum, ".", " Binormal classifier example. The distribution of men's and women's heights\nfollow approximately a normal distribution. The model implies an AUROC of .906.\nThe vertical dashed line at 171 cm is an example decision threshold.")
 
 binormal_example <- ggplot(plot_data, aes(cm, y, color=distribution)) +
   geom_path() +
@@ -122,23 +104,19 @@ binormal_example <- ggplot(plot_data, aes(cm, y, color=distribution)) +
   scale_x_continuous( breaks = c(164.7, 178.4) ) +
   theme_bw() +
   labs(
-    #caption = plot_title, 
     x = "cm",
     y = "density",
     linetype="") +
   theme(
-    plot.caption = element_text(hjust = 0, vjust = 0, size = caption_size),
     axis.text.x = element_text(size=axis.text.x.size),
     legend.title = element_blank()
     ) 
 
 ```
 
+```{r binormal_example, fig.width=5, fig.height=2.5, fig.cap="\\label{fig:binormal_example}A binormal classifier example. The distribution of men's and women's heights approximately follow a normal distribution. The model implies an AUROC of .906. The vertical dashed line at 171 cm is an example decision threshold."}
 
-```{r mapping figure numbers}
-# height figure
-height_fnum <- fnum
-fnum <- fnum + 1
+binormal_example
 
 ```
 
@@ -351,24 +329,20 @@ ci_plot <- ci_plot +
   geom_segment(aes(x = lower_x2, y = lower_y, xend = lower_x2, yend = -Inf), data = segment_data, color=mcolors[2], linetype="dashed") +
   geom_segment(aes(x = x1, y = upper_y, xend = upper_x2, yend = upper_y), data = segment_data, color=mcolors[2], linetype="dashed") +
   geom_segment(aes(x = upper_x2, y = upper_y, xend = upper_x2, yend = -Inf), data = segment_data, color=mcolors[2], linetype="dashed") +
-  #labs(caption = ci_title) +
   theme_bw() +
-  theme(plot.caption = element_text(hjust = 0, vjust = 0, size = caption_size)) +
   NULL
 
 
 ```
 
-```{r Resolving power figure numbers}
-# confidence interval plot
-ci_fnum <- fnum
-fnum <- fnum+1
+```{r toy_example, fig.width=5, fig.height=2.5, fig.cap="\\label{fig:toy_example}Response curve example. The two panels are united by the same sequence of models used to construct the quality grid. The AUROC serves as the common reference scale on the x-axis."}
+
+ci_plot
 
 ```
 
 
 ## 5. Binormal model
-
 
 ```{r gaussian PRC curve}
 #-----
@@ -812,11 +786,8 @@ gauss_RC <- ggplot(auprc_grid, aes(pop_auroc, auprc, color=prevalence)) +
   geom_point(data = eval_data, aes(pop_auroc, auprc, shape=model_quality), size=2) +
   xlab("AUROC") +
   ylab("AUPRC") +
-  #labs(caption = plot_title) +
   theme_bw() +
-  theme(
-    plot.caption = element_text(hjust = 0, vjust = 0, size = caption_size),
-    legend.box = "horizontal")
+  theme(legend.box = "horizontal")
 
 ```
 
@@ -833,11 +804,8 @@ SE_plot <- ggplot(auprc_grid, aes(pop_auroc, SE_AUROC, color=prevalence)) +
   geom_path() +
   xlab("AUROC") +
   ylab("Standard Error") +
-  #labs(caption = plot_title) +
   theme_bw() +
-  theme(
-    plot.caption = element_text(hjust = 0, vjust = 0, size = caption_size),
-    legend.box = "horizontal")
+  theme(legend.box = "horizontal")
 
 ####
 # normal approximate CIs
@@ -881,29 +849,31 @@ sim_auroc95CI <- c(sim_auroc95CI$roc_est_lower, sim_auroc95CI$roc_est_upper)
 
 ```
 
-```{r binormal section figure numbers}
-# simulation design plot
-gauss_fnum <- fnum
-fnum <- fnum + 1
-
-# relative resolving power plot
-N10k_rel_fnum <- fnum
-fnum <- fnum+1
-
-# standard error plot
-SE_plot_fnum <- fnum
-fnum <- fnum + 1
+```{r gauss_RC, fig.width=6, fig.height=3, fig.cap="\\label{fig:gauss_RC}Mapping between AUROC and AUPRC for the binormal model."}
+gauss_RC
 
 ```
+
+```{r N10k_compare, fig.width=8, fig.height=2.5, fig.cap="\\label{fig:N10k_compare}Relative metric resolution by outcome prevalence and model quality for a binormal model with a sample size of N = 10,000. At each level of model quality 10,000 simulations are taken from the sampling model. Confidence limits are found from the .025 and .975 quantile values of the simulation samples."}
+plot_relative
+
+```
+
+```{r SE_plot, fig.width=5, fig.height=3, fig.cap="\\label{fig:SE_plot}The relationship between AUROC and its standard error for different levels of outcome prevalence. The standard error is found using the approximation formula from @hanley1982meaning."}
+SE_plot
+
+```
+
 
 
 ## 6. Empirical sampling models
 
 ```{r import data}
 # see source folder for scripts that built this data set
-load("C:/Users/ColinBeam/OneDrive - Ursa Health/Documents/Colin_UrsaFiles/Ursa Projects/Standard_Models/preventable_utilization/diabetes_example/diabetes_post_raw.RData")
+load("diabetes_post_raw.RData")
 
 ```
+
 
 ```{r prep data for XGBoost}
 # separate ID
@@ -1316,24 +1286,40 @@ empirical_plot  <- ggplot(empirical_grid, aes(pop_auroc, auprc)) +
   geom_point(data = baseline_values, aes(auroc, auprc), size=2) +
   xlab("AUROC") +
   ylab("AUPRC") +
-  #labs(caption = plot_title) +
   theme_bw() +
-  theme(plot.caption = element_text(hjust = 0, vjust = 0, size = caption_size))
+  NULL
 
 
 ```
 
+```{r risk_distrib, fig.width=8, fig.height=4, fig.cap="\\label{fig:risk_distrib}Top panel: Estimated logit effects with kernel density estimates for the positive and negative class. Bottom panel: Q-Q norm plots of sample versus theoretical quantiles. Straight lines pass through the 1st and 3rd quartiles."}
 
-```{r empirical sampling model figure numbers}
-# risk distribution plot
-fnum_effects <- fnum
-fnum <- fnum + 1
-
-# empirical response curve
-empirical_fnum <- fnum
-fnum <- fnum + 1
+ggarrange(plots = list(logit_distribution, qq_distribution), nrow=2)
 
 ```
+
+```{r empirical_RC, fig.width=4, fig.height=2.5, fig.cap="\\label{fig:empirical_RC}An empirical response curve from the readmissions data logistic regression model. The black point shows baseline performance. The curve is constructed by incrementing positive scores above and below the baseline distribution."}
+
+empirical_plot
+
+```
+
+```{r empirical_summary}
+sim_results_summary$resolving_power <- round(sim_results_summary$resolving_power,1)
+
+# format names to be Latex compatible
+names(sim_results_summary) <- c("metric", "Lower CI", "Upper CI", "$\\kappa$", "resolving power")
+
+table_title <- paste0()
+
+kableExtra::kbl(sim_results_summary, caption = "Simulation results summary. Lower and upper CI bounds are for 95 percent confidence intervals.", format = "latex", escape = FALSE, align = "c") %>% 
+  kable_styling(latex_options = "hold_position") %>% 
+  row_spec(0,bold=TRUE) %>% 
+  column_spec(1, bold = TRUE)
+  
+```
+
+
 
 
 ## Appendix
@@ -1394,8 +1380,10 @@ alt_plot <- ggplot(metric_data, aes(ausgc, auroc)) +
   theme_bw() +
   NULL
 
-alt_fnum <- fnum
+```
 
+```{r alt_resolution, fig.width=4, fig.height=2.5, fig.cap="\\label{fig:alt_resolution}Response curve plotting the AUROC references scale on the y-axis. A linear approximation of the response function at the evaluation point is shown in red."}
+alt_plot
 ```
 
 
@@ -1485,7 +1473,6 @@ plot_data <- gauss_results %>%
 
 ```
 
-
 ```{r N1k results comparison plot}
 pop_auroc <- unique(plot_data$pop_auroc)
 
@@ -1496,6 +1483,11 @@ plot_relative <- ggplot(plot_data, aes(prevalence, ci_ratio, fill=prevalence)) +
   ylab(~ paste(kappa["AUPRC"], "/", kappa["AUROC"], " - 1")) +
   theme_bw()
 
+```
+
+```{r N1k_compare, fig.width=8, fig.height=2.5, fig.cap="\\label{fig:N1k_compare}Relative resolution of AUPRC versus AUROC by outcome prevalence and model quality for a binormal model with a sample size of N = 1000. At each level of model quality 10,000 simulations are taken from the sampling model. Confidence limits are found from the .025 and .975 quantile values of the simulation samples."}
+
+plot_relative
 
 ```
 
@@ -1584,6 +1576,7 @@ plot_data <- gauss_results %>%
 
 ```
 
+
 ```{r N100k results comparison plot}
 pop_auroc <- unique(plot_data$pop_auroc)
 
@@ -1596,13 +1589,8 @@ plot_relative <- ggplot(plot_data, aes(prevalence, ci_ratio, fill=prevalence)) +
 
 ```
 
+```{r N100k_compare, fig.width=8, fig.height=2.5, fig.cap="\\label{fig:N100k_compare}Relative metric resolution by outcome prevalence and model quality for a binormal model with a sample size of N = 100,000. At each level of model quality 10,000 simulations are taken from the sampling model. Confidence limits are found from the .025 and .975 quantile values of the simulation samples."}
 
-```{r appendix B figure numbers}
-N1k_results_fnum <- fnum
-fnum <- fnum+1
-
-N100k_results_fnum <- fnum
-fnum <- fnum+1
+plot_relative
 
 ```
-

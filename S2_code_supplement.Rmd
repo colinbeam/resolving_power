@@ -1,12 +1,20 @@
 ---
 title: "S2_code_supplement"
-author: Colin S. Beam
-date: 
-output: html_document
+author: "Colin S. Beam"
+date: "2025-02-12"
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      out.extra = "", # This forces knitr to label all figures.
+                      #fig.pos = 'H',  # hold the figure positions
+                      #fig.pos='htbp', # put figure position approximately here
+                      dev = "pdf"
+                      )  
+
 library(tidyverse)
 library(kableExtra)
 library(PRROC)
@@ -14,12 +22,24 @@ library(boot)
 library(egg)
 library(tinytex)
 library(distill)
+library(caret)
+
 ```
 
+
 ```{r plotting parameters}
-# legend text size
-axis.text.x.size <- 12
-legend.text.size <- 12
+# text size for graphs
+axis_title_size <- 8
+legend_title_size <- 8
+axis_text_size <- 6
+legend_text_size <- 6
+
+# text size for relative resolution graphs
+rr_axis_text_size <- 6
+rr_axis_title_size <- 8
+
+# two color palette
+two_colors <- c("dodgerblue", "darkgoldenrod1")
 
 ```
 
@@ -39,10 +59,8 @@ confusion_matrix[1,] <- c("TP", "FP")
 confusion_matrix[2,] <- c("FN", "TN")
 confusion_matrix[3,] <- c("P", "N")
 
-kableExtra::kbl(confusion_matrix, caption = "An example confusion matrix", format = "latex", escape = FALSE, align = "c") %>% 
-  kable_styling(latex_options = "hold_position") %>% 
-  row_spec(0, bold=TRUE) %>% 
-  column_spec(1, bold = TRUE)
+knitr::kable(confusion_matrix, caption = "Example confusion matrix", escape = FALSE, align = "c") %>% 
+  kableExtra::kable_styling(latex_options = c("hold_position"))
 
 ```
 
@@ -100,7 +118,7 @@ binormal_example <- ggplot(plot_data, aes(cm, y, color=distribution)) +
   geom_path() +
   geom_vline(xintercept = decision_threshold, linetype = "dashed") +
   #scale_linetype_manual(values = c("dashed", "solid")) +
-  scale_color_manual(values = c("dodgerblue", "darkgoldenrod1")) +
+  scale_color_manual(values = two_colors) +
   scale_x_continuous( breaks = c(164.7, 178.4) ) +
   theme_bw() +
   labs(
@@ -108,22 +126,23 @@ binormal_example <- ggplot(plot_data, aes(cm, y, color=distribution)) +
     y = "density",
     linetype="") +
   theme(
-    axis.text.x = element_text(size=axis.text.x.size),
-    legend.title = element_blank()
+    axis.title = element_text(size=axis_title_size),
+    axis.text = element_text(size=axis_text_size),
+    legend.title = element_blank(),
+    legend.text = element_text(size=legend_text_size)
     ) 
 
 ```
 
-```{r binormal_example, fig.width=5, fig.height=2.5, fig.cap="\\label{fig:binormal_example}A binormal classifier example. The distribution of men's and women's heights approximately follow a normal distribution. The model implies an AUROC of .906. The vertical dashed line at 171 cm is an example decision threshold."}
+```{r binormal_example, fig.width=4, fig.height=1.5, fig.cap="\\label{fig:binormal_example}A binormal classifier example. The distribution of men's and women's heights approximately follow a normal distribution. The model implies an AUROC of .906. The vertical dashed line at 171 cm is an example decision threshold."}
 
 binormal_example
 
 ```
 
-
 ## 4. Resolving power
 
-```{r fictional response functions}
+```{r fictional signal functions}
 #----
 # auroc_to_ausgc
 #
@@ -204,7 +223,6 @@ perf_data <- data.frame(
 
 
 ```{r create data for method example}
-mcolors <- c("deepskyblue", "orange")
 grid_length <- 1000
 point_size <- 2
 bar_size <- .03
@@ -268,17 +286,20 @@ segment_data <- data.frame(
 ci_plot <- ggplot(metric_data, aes(auroc, metric_value)) +
   facet_wrap(~ metric_label, ncol=2) +
   geom_path(color="black") +
-  xlab("AUROC model quality") +
+  xlab("Model quality (AUROC units)") +
   ylab("Metric value") +
-  geom_point(mapping = aes(auroc_eval, metric_value), data = plot_data, size=point_size, color=mcolors[1]) +
-  geom_errorbar(mapping = aes(auroc_eval, ymin=metric_lower, ymax=metric_upper), data = plot_data, width=bar_size, color=mcolors[1]) +
-  geom_segment(aes(x = x1, y = lower_y, xend = lower_x2, yend = lower_y), data = segment_data, color=mcolors[1], linetype="dashed") +
-  geom_segment(aes(x = lower_x2, y = lower_y, xend = lower_x2, yend = -Inf), data = segment_data, color=mcolors[1], linetype="dashed") +
-  geom_segment(aes(x = x1, y = upper_y, xend = upper_x2, yend = upper_y), data = segment_data, color=mcolors[1], linetype="dashed") +
-  geom_segment(aes(x = upper_x2, y = upper_y, xend = upper_x2, yend = -Inf), data = segment_data, color=mcolors[1], linetype="dashed") +
+  geom_point(mapping = aes(auroc_eval, metric_value), data = plot_data, size=point_size, color=two_colors[1]) +
+  geom_errorbar(mapping = aes(auroc_eval, ymin=metric_lower, ymax=metric_upper), data = plot_data, width=bar_size, color=two_colors[1]) +
+  geom_segment(aes(x = x1, y = lower_y, xend = lower_x2, yend = lower_y), data = segment_data, color=two_colors[1], linetype="dashed") +
+  geom_segment(aes(x = lower_x2, y = lower_y, xend = lower_x2, yend = -Inf), data = segment_data, color=two_colors[1], linetype="dashed") +
+  geom_segment(aes(x = x1, y = upper_y, xend = upper_x2, yend = upper_y), data = segment_data, color=two_colors[1], linetype="dashed") +
+  geom_segment(aes(x = upper_x2, y = upper_y, xend = upper_x2, yend = -Inf), data = segment_data, color=two_colors[1], linetype="dashed") +
   theme_bw() +
+  theme(
+    axis.title = element_text(size=axis_title_size),
+    axis.text = element_text(size=axis_text_size)
+  ) +
   NULL
-
 
 ```
 
@@ -323,24 +344,27 @@ segment_data <- data.frame(
 # CI plot
 
 ci_plot <- ci_plot +
-  geom_point(mapping = aes(auroc_eval, metric_value), data = plot_data, size=point_size, color=mcolors[2]) +
-  geom_errorbar(mapping = aes(auroc_eval, ymin=metric_lower, ymax=metric_upper), data = plot_data, width=bar_size, color=mcolors[2]) +
-  geom_segment(aes(x = x1, y = lower_y, xend = lower_x2, yend = lower_y), data = segment_data, color=mcolors[2], linetype="dashed") +
-  geom_segment(aes(x = lower_x2, y = lower_y, xend = lower_x2, yend = -Inf), data = segment_data, color=mcolors[2], linetype="dashed") +
-  geom_segment(aes(x = x1, y = upper_y, xend = upper_x2, yend = upper_y), data = segment_data, color=mcolors[2], linetype="dashed") +
-  geom_segment(aes(x = upper_x2, y = upper_y, xend = upper_x2, yend = -Inf), data = segment_data, color=mcolors[2], linetype="dashed") +
+  geom_point(mapping = aes(auroc_eval, metric_value), data = plot_data, size=point_size, color=two_colors[2]) +
+  geom_errorbar(mapping = aes(auroc_eval, ymin=metric_lower, ymax=metric_upper), data = plot_data, width=bar_size, color=two_colors[2]) +
+  geom_segment(aes(x = x1, y = lower_y, xend = lower_x2, yend = lower_y), data = segment_data, color=two_colors[2], linetype="dashed") +
+  geom_segment(aes(x = lower_x2, y = lower_y, xend = lower_x2, yend = -Inf), data = segment_data, color=two_colors[2], linetype="dashed") +
+  geom_segment(aes(x = x1, y = upper_y, xend = upper_x2, yend = upper_y), data = segment_data, color=two_colors[2], linetype="dashed") +
+  geom_segment(aes(x = upper_x2, y = upper_y, xend = upper_x2, yend = -Inf), data = segment_data, color=two_colors[2], linetype="dashed") +
   theme_bw() +
+  theme(
+    axis.title = element_text(size=axis_title_size),
+    axis.text = element_text(size=axis_text_size)
+  ) + 
   NULL
 
 
 ```
 
-```{r toy_example, fig.width=5, fig.height=2.5, fig.cap="\\label{fig:toy_example}Response curve example. The two panels are united by the same sequence of models used to construct the quality grid. The AUROC serves as the common reference scale on the x-axis."}
+```{r toy_example, fig.width=5, fig.height=2.2, fig.cap="\\label{fig:toy_example}Signal curve example. The two panels are united by the same sequence of models used to construct the quality grid. The AUROC serves as the common reference scale on the x-axis."}
 
 ci_plot
 
 ```
-
 
 ## 5. Binormal model
 
@@ -401,7 +425,7 @@ tune_grid <- expand.grid(auroc=auroc_values, prevalence=prevalence)
 gauss_results <- data.frame(
   prevalence = tune_grid$prevalence,
   pop_auroc = tune_grid$auroc,
-  aupr = NA
+  auprc = NA
 )
 
 # array for apply function
@@ -413,24 +437,24 @@ for(i in 1:length(prevalence) ) {
   v <- prevalence[i]
   
   # estimate auprs
-  new_aupr <- apply(auroc_values, 1, binormal_aupr, alpha=v)
+  new_auprc <- apply(auroc_values, 1, binormal_auprc, alpha=v)
   
   # store results
-  gauss_results[gauss_results$prevalence==v, 3] <- new_aupr
+  gauss_results[gauss_results$prevalence==v, 3] <- new_auprc
   
 }
 
 # save results
-write_csv(gauss_results, file = "gauss_aupr_grid.csv")
+write_csv(gauss_results, file = "gauss_auprc_grid.csv")
 
 ```
 
 
 ```{r functions for binormal simulation}
 # overlap functions
-source("./Functions/dist_overlap.R")
+source("dist_overlap.R")
 
-# binormal response curve
+# binormal signal curve
 auprc_grid <- read_csv("gauss_auprc_grid.csv")
 
 # functions to recover estimates
@@ -706,7 +730,14 @@ plot_relative <- ggplot(plot_data, aes(prevalence, ci_ratio, fill=prevalence)) +
   geom_col() +
   scale_x_discrete(labels = c(".01", ".05", ".10", ".20", ".30", ".40", ".50")) +
   ylab(~ paste(kappa["PRC"], "/", kappa["ROC"], " - 1")) +
-  theme_bw()
+  theme_bw() +
+  theme(
+    axis.title = element_text(size = rr_axis_title_size), 
+    axis.text = element_text(size = rr_axis_text_size)
+    ) +
+  guides(fill="none") +
+  ylim(c(-.15, .35)) +
+  NULL
 
 
 ```
@@ -756,7 +787,7 @@ auprc_grid$SE_AUROC <- SE_data
 ```
 
 
-```{r AUPRC response curve plot}
+```{r AUPRC signal curve plot}
 # define prevalence as a factor
 auprc_grid <- auprc_grid %>% 
   mutate(
@@ -781,13 +812,28 @@ eval_data <- eval_data %>%
     model_quality = factor(model_quality, levels = c("Poor", "Fair", "Good", "Excellent"))
     )
 
-gauss_RC <- ggplot(auprc_grid, aes(pop_auroc, auprc, color=prevalence)) + 
-  geom_path() +
-  geom_point(data = eval_data, aes(pop_auroc, auprc, shape=model_quality), size=2) +
+gauss_SC <- ggplot(auprc_grid, aes(pop_auroc, auprc, color=prevalence)) + 
+  geom_path(size = 0.3) +
+  geom_point(data = eval_data, 
+             aes(pop_auroc, 
+                 auprc, 
+                 shape=model_quality
+                 ), 
+             size=1.5
+             ) +
   xlab("AUROC") +
   ylab("AUPRC") +
+  labs(shape = "model quality") +
   theme_bw() +
-  theme(legend.box = "horizontal")
+  theme(
+    legend.box = "horizontal",
+    axis.title = element_text(size=axis_title_size),
+    axis.text = element_text(size=axis_text_size),
+    legend.title = element_text(size=legend_title_size),
+    legend.text = element_text(size=legend_text_size)
+  ) +
+  NULL
+
 
 ```
 
@@ -801,11 +847,18 @@ gauss_RC <- ggplot(auprc_grid, aes(pop_auroc, auprc, color=prevalence)) +
 #  )
 
 SE_plot <- ggplot(auprc_grid, aes(pop_auroc, SE_AUROC, color=prevalence)) + 
-  geom_path() +
+  geom_path(size=.3) +
   xlab("AUROC") +
   ylab("Standard Error") +
   theme_bw() +
-  theme(legend.box = "horizontal")
+  theme(
+    legend.box = "horizontal",
+    axis.title = element_text(size=axis_title_size),
+    axis.text = element_text(size=axis_text_size),
+    legend.title = element_text(size=legend_title_size),
+    legend.text = element_text(size=legend_text_size)
+    ) +
+  NULL
 
 ####
 # normal approximate CIs
@@ -849,22 +902,20 @@ sim_auroc95CI <- c(sim_auroc95CI$roc_est_lower, sim_auroc95CI$roc_est_upper)
 
 ```
 
-```{r gauss_RC, fig.width=6, fig.height=3, fig.cap="\\label{fig:gauss_RC}Mapping between AUROC and AUPRC for the binormal model."}
-gauss_RC
+```{r gauss_SC, fig.width=4.5, fig.height=2.2, fig.cap="\\label{fig:gauss_SC}Mapping between AUROC and AUPRC for the binormal model."}
+gauss_SC
 
 ```
 
-```{r N10k_compare, fig.width=8, fig.height=2.5, fig.cap="\\label{fig:N10k_compare}Relative metric resolution by outcome prevalence and model quality for a binormal model with a sample size of N = 10,000. At each level of model quality 10,000 simulations are taken from the sampling model. Confidence limits are found from the .025 and .975 quantile values of the simulation samples."}
+```{r N10k_compare, fig.width=5, fig.height=2, fig.cap="\\label{fig:N10k_compare}Relative metric resolution by outcome prevalence and model quality for a binormal model with a sample size of N = 10,000. At each level of model quality 10,000 simulations are taken from the sampling model. Confidence limits are the .025 and .975 quantile values of the simulation samples."}
 plot_relative
 
 ```
 
-```{r SE_plot, fig.width=5, fig.height=3, fig.cap="\\label{fig:SE_plot}The relationship between AUROC and its standard error for different levels of outcome prevalence. The standard error is found using the approximation formula from @hanley1982meaning."}
+```{r SE_plot, fig.width=4, fig.height=2.2, fig.cap="\\label{fig:SE_plot}The relationship between AUROC and its standard error for different levels of outcome prevalence. The standard error is found using Hanley and McNeil (1982)'s approximation formula."}
 SE_plot
 
 ```
-
-
 
 ## 6. Empirical sampling models
 
@@ -873,7 +924,6 @@ SE_plot
 load("diabetes_post_raw.RData")
 
 ```
-
 
 ```{r prep data for XGBoost}
 # separate ID
@@ -901,15 +951,12 @@ dataset <- select(dataset, -DV)
 
 ```{r create model matrix}
 # use caret functions
-library(caret)
 dmy <- dummyVars( ~ ., data = dataset, fullRank = TRUE)
 mod_mat <- predict(dmy, newdata = dataset)
 
 ```
 
 ```{r 5-fold data splitting, include=FALSE}
-library(caret)
-
 set.seed(1)
 kfolds <- 5
 fold_list <- createFolds(as.factor(DV), k = kfolds)
@@ -975,6 +1022,7 @@ test_results <- test_results %>%
 
 ```
 
+
 ```{r descriptive statistics}
 # prevalence
 readmit_prevalence <- mean(test_results$DV)
@@ -1005,31 +1053,46 @@ test_auprc <- PRROC::pr.curve(scores.class0 = test_results$ylogit, weights.class
 ```{r plot logit distributions}
 #-----
 # risk distribution plot
-lcolors <- c("dodgerblue", "darkgoldenrod1")
 
 logit_distribution <- ggplot(test_results, aes(ylogit, color=class)) +
   geom_density() + 
   geom_rug(data = subset(test_results, DV==1), sides = "t", alpha=2/5) +
   geom_rug(data = subset(test_results, DV==0), sides = "b", alpha=2/5) +
-  scale_color_manual(values = lcolors) +
+  scale_color_manual(values = two_colors) +
   labs(
     y = "density",
     x = "estimated logit",
     color = "class"
   ) +
-  theme_bw()
-
+  theme_bw() +
+  theme(
+    legend.box = "horizontal",
+    axis.title = element_text(size=axis_title_size),
+    axis.text = element_text(size=axis_text_size),
+    legend.title = element_text(size=legend_title_size),
+    legend.text = element_text(size=legend_text_size)
+  ) +
+  NULL
+  
 ```
 
 
 ```{r qqnorm plots}
 qq_distribution <- ggplot(test_results, aes(sample=ylogit, color=class)) +
   facet_grid(~class) +
-  stat_qq() +
+  stat_qq(size=.8) +
   stat_qq_line() +
-  scale_color_manual(values = lcolors) +
+  scale_color_manual(values = two_colors) +
   labs(x = "theoretical", y="sample") +
-  theme_bw()
+  theme_bw() +
+  theme(
+    legend.box = "horizontal",
+    axis.title = element_text(size=axis_title_size),
+    axis.text = element_text(size=axis_text_size),
+    legend.title = element_text(size=legend_title_size),
+    legend.text = element_text(size=legend_text_size)
+  ) +
+  NULL
   
 ```
 
@@ -1052,7 +1115,7 @@ baseline_model <- test_results %>%
 #----
 # build grid function
 #
-# Function to build response curve grid from a baseline model
+# Function to build signal curve grid from a baseline model
 #
 ## Arguments
 # 
@@ -1167,7 +1230,7 @@ write_csv(empirical_grid, "empirical_grid.csv")
 ```
 
 
-```{r step 3 random sampling, eval=FALSE}
+```{r step 3 noise estimation, eval=FALSE}
 # indices for stratified sampling
 row_index <- 1:nrow(baseline_model)
 pos_index <- row_index[baseline_model$outcome==1]
@@ -1257,8 +1320,8 @@ upper_ci = round(c(auroc_CI[2], auprc_CI[2], auprc_CI_convert$upper_ci), 4)
 sim_results_summary <- data.frame(
   metric = c("AUROC", "AUPRC", "AUPRC to AUROC"),
   #Bias = bias,
-  'Lower_CI' = lower_ci,
-  'Upper_CI' = upper_ci,
+  'Lower CI' = lower_ci,
+  'Upper CI' = upper_ci,
   kappa = upper_ci - lower_ci
 )
 
@@ -1272,7 +1335,7 @@ sim_results_summary <- sim_results_summary %>%
 ```
 
 
-```{r empirical response curve plot}
+```{r empirical signal curve plot}
 # point of interest
 auroc <- PRROC::roc.curve(scores.class0 = baseline_model$risk_score, weights.class0 = baseline_model$outcome)$auc
 
@@ -1283,22 +1346,27 @@ baseline_values <- data.frame(auroc=auroc, auprc=auprc)
 # create plot
 empirical_plot  <- ggplot(empirical_grid, aes(pop_auroc, auprc)) + 
   geom_path() +
-  geom_point(data = baseline_values, aes(auroc, auprc), size=2) +
+  geom_point(data = baseline_values, aes(auroc, auprc), size=1.5) +
   xlab("AUROC") +
   ylab("AUPRC") +
   theme_bw() +
+  theme(
+    legend.box = "horizontal",
+    axis.title = element_text(size=axis_title_size),
+    axis.text = element_text(size=axis_text_size),
+  ) +
   NULL
 
 
 ```
 
-```{r risk_distrib, fig.width=8, fig.height=4, fig.cap="\\label{fig:risk_distrib}Top panel: Estimated logit effects with kernel density estimates for the positive and negative class. Bottom panel: Q-Q norm plots of sample versus theoretical quantiles. Straight lines pass through the 1st and 3rd quartiles."}
+```{r risk_distrib, fig.width=5, fig.height=3, fig.cap="\\label{fig:risk_distrib}Top panel: Estimated logit effects with kernel density estimates for the positive and negative class. Bottom panel: Q-Q norm plots of sample versus theoretical quantiles. Straight lines pass through the 1st and 3rd quartiles."}
 
 ggarrange(plots = list(logit_distribution, qq_distribution), nrow=2)
 
 ```
 
-```{r empirical_RC, fig.width=4, fig.height=2.5, fig.cap="\\label{fig:empirical_RC}An empirical response curve from the readmissions data logistic regression model. The black point shows baseline performance. The curve is constructed by incrementing positive scores above and below the baseline distribution."}
+```{r empirical_SC, fig.width=2.5, fig.height=1.5, fig.cap="\\label{fig:empirical_RC}An empirical signal curve from the readmissions data logistic regression model. The black point shows baseline performance. The curve is constructed by incrementing positive scores above and below the baseline distribution."}
 
 empirical_plot
 
@@ -1312,13 +1380,541 @@ names(sim_results_summary) <- c("metric", "Lower CI", "Upper CI", "$\\kappa$", "
 
 table_title <- paste0()
 
-kableExtra::kbl(sim_results_summary, caption = "Simulation results summary. Lower and upper CI bounds are for 95 percent confidence intervals.", format = "latex", escape = FALSE, align = "c") %>% 
-  kable_styling(latex_options = "hold_position") %>% 
+kableExtra::kbl(sim_results_summary, caption = "Simulation results summary. Lower and upper CI bounds are for 95 percent confidence intervals.", escape = FALSE, align = "c") %>% 
   row_spec(0,bold=TRUE) %>% 
   column_spec(1, bold = TRUE)
   
 ```
 
+
+## 7. Empirical validation
+
+```{r create diabetes model matrix}
+# reload diabetes data
+load("diabetes_post_raw.RData")
+
+# select outcome
+dataset <- dataset %>% 
+  rename(
+    DV = outcome
+  ) %>%
+  mutate(
+    DV = ifelse(DV=="readmitted", 1, 0)
+  ) %>% 
+  select(
+    -patient_nbr,
+  ) %>% 
+  relocate(DV)
+
+# remove DV for R code
+DV <- dataset$DV
+dataset <- select(dataset, -DV)
+
+# use caret functions
+dmy <- dummyVars( ~ ., data = dataset, fullRank = TRUE)
+mod_mat <- predict(dmy, newdata = dataset)
+
+```
+
+
+```{r metric_calc}
+#----
+# metric_calc
+#
+# helper to find the comparison metric value when applied to effect distribution.
+#
+## arguments
+#
+# risk_score          risk scores assigned to each case
+# outcome             each cases outcome
+# metric_name         name of the comparison metric
+# severity.ratio      relative cost of positive versus negative class for the H-measure. Leaving to default uses the relative class proportions.
+
+metric_calc <- function(risk_score, outcome, metric_name, severity.ratio=NA) {
+  
+  require(PRROC)
+  
+  allowed_metrics = c("auroc", "auprc", "hmeasure")
+  
+  if (! (metric_name %in% allowed_metrics) ) {
+    stop(paste(metric_name, "currently not supported"))
+  }
+  
+  if ( metric_name == "auroc" ) {
+    value <- PRROC::roc.curve(scores.class0 = risk_score, weights.class0 = outcome)$auc
+  } else if ( metric_name == "auprc" ) {
+    value <- PRROC::pr.curve(scores.class0 = risk_score, weights.class0 = outcome)$auc.davis.goadrich
+  } else if ( metric_name == "hmeasure" ) {
+    value <- hmeasure::HMeasure(outcome, risk_score, severity.ratio = severity.ratio)$metrics$H
+  }
+  
+  value
+
+  }
+
+```
+
+```{r resolving power linear approximation function}
+#----
+# rpower
+#
+# Estimate resolving power from an empirical distribution of risk scores
+#
+## Arguments
+#
+# compare_metric      metric to compare to AUROC
+# baseline_effects    empirical distribution of effects from a baseline model
+# auroc_step          grid step size in auroc units
+# auroc_range         2 element vector giving the upper and lower bounds of the signal curve segment.
+# number_switches     grid step size in number of resolved pairs
+# noise_sim           number of samples to estimate noise distribution.
+#
+# Must specify auroc_step or number_switches. Need an adequate number of samples in the step size to smooth out sampling variance in how the metric changes. For simulation quantile CIs probably want to use noise_sim = 10,000. For approximate CIs noise_sim = 500 should be sufficient.
+
+rpower <- function(compare_metric, baseline_effects, severity.ratio=NA, linear_approx=TRUE, auroc_step=NULL, auroc_range=NULL, number_resolved=NULL, noise_sim = 500) {
+  
+  auroc_step_test <- is.null(auroc_step)
+  number_resolved_test <- is.null(number_resolved)
+  
+  if (!auroc_step_test & !number_resolved_test) {
+    stop("must specify either auroc_step or number_resolved argument")
+  }
+  
+  if (linear_approx & !is.null(auroc_range)) {
+    warning("since linear approximation selected, auroc_range argument ignored.")
+  } else{
+    auroc_neg = auroc_range[1]
+    auroc_pos = auroc_range[2]
+  }
+  
+  # positive and negative effects from the baseline model
+  pos_effects <- baseline_effects$risk_score[baseline_effects$outcome==1]
+  neg_effects <- baseline_effects$risk_score[baseline_effects$outcome==0]
+  
+  # find the total number of adjacent switches
+  n_pos <- sum(baseline_effects$outcome) 
+  n_neg <- nrow(baseline_effects) - n_pos
+  total_switches <- n_pos*n_neg
+  
+  if(number_resolved_test) {
+    number_resolved <- round(total_switches*auroc_step)
+  }
+  
+  ####
+  # outer product distance matrix
+  
+  # NOTE: This approach will not scale. Will need to find an approximate solution.
+  
+  # negative difference means "out-of-order" 
+  # positive difference means "in-order"
+  dist_mat <- outer(pos_effects, neg_effects, FUN = "-")
+  
+  # shift positive direction
+  out_of_order <- sort(-1*dist_mat[dist_mat<0], decreasing=FALSE)
+  pos_shift <- out_of_order[number_resolved]
+  rm(out_of_order)
+  
+  # shift negative direction: undo "in-order" score
+  in_order <- sort(dist_mat[dist_mat>0], decreasing=FALSE)
+  neg_shift <- in_order[number_resolved]
+  rm(in_order)
+  
+  #----
+  # linear approximation method
+  
+  # linear signal approximation
+  if (linear_approx) {
+    
+    baseline_auroc <- metric_calc(baseline_effects$risk_score, baseline_effects$outcome, "auroc")
+    baseline_compare <- metric_calc(baseline_effects$risk_score, baseline_effects$outcome, compare_metric, severity.ratio = severity.ratio)
+    
+    linear_grid <- data.frame(grid_point = 1:3, auroc=NA, compare_metric=NA)
+    names(linear_grid)[3] <- compare_metric
+    rownames(linear_grid) <- c("step_down", "baseline", "step_up")
+    
+    linear_grid["baseline", "auroc"] <- baseline_auroc
+    linear_grid["baseline", compare_metric] <- baseline_compare
+    
+    ####
+    # shift grid by adding to positive class
+    
+    # positive shift
+    shift_effects <- baseline_effects
+    
+    shift_effects$risk_score[shift_effects$outcome==1] <-  shift_effects$risk_score[shift_effects$outcome==1] + pos_shift
+    
+    shift_auroc <- metric_calc(shift_effects$risk_score, shift_effects$outcome, "auroc")
+    shift_compare <- metric_calc(shift_effects$risk_score, shift_effects$outcome, compare_metric, severity.ratio = severity.ratio)
+    linear_grid["step_up", -1] <- c(shift_auroc, shift_compare)
+    
+    # negative shift
+    shift_effects <- baseline_effects
+    
+    shift_effects$risk_score[shift_effects$outcome==1] <-  shift_effects$risk_score[shift_effects$outcome==1] - neg_shift
+    
+    shift_auroc <- metric_calc(shift_effects$risk_score, shift_effects$outcome, "auroc")
+    shift_compare <- metric_calc(shift_effects$risk_score, shift_effects$outcome, compare_metric, severity.ratio = severity.ratio)
+    linear_grid["step_down", -1] <- c(shift_auroc, shift_compare)
+    
+    # linear approximation of signal curve
+    signal_linear <- lm(linear_grid[,"auroc"] ~ linear_grid[, compare_metric])
+    
+  }
+  
+  ####
+  # noise distribution: just find the SD of the sample and use + or - 2
+  
+  # indices for stratified sampling
+  row_index <- 1:nrow(baseline_effects)
+  pos_index <- row_index[baseline_effects$outcome==1]
+  neg_index <- setdiff(row_index, pos_index)
+  
+  # apply stratified sampling to create bootstrap samples
+  store_boot <- data.frame(sim = 1:noise_sim, auroc=NA, compare_metric=NA)
+  
+  for(i in 1:noise_sim) {
+    
+    # stratified sampling
+    pos_sample <- sample(pos_index, size = length(pos_index), replace = TRUE)
+    neg_sample <- sample(neg_index, size = length(neg_index), replace = TRUE)
+    
+    boot_index <- c(pos_sample, neg_sample)
+    boot_effects <- baseline_effects[boot_index, ]
+    
+    # find metric values
+    new_auroc <- metric_calc(boot_effects$risk_score, boot_effects$outcome, "auroc")
+    new_compare <- metric_calc(boot_effects$risk_score, boot_effects$outcome, compare_metric, severity.ratio = severity.ratio)
+    
+    store_boot[i,-1] <- c(new_auroc, new_compare)
+    
+  }
+  
+  ####
+  # calculate resolving power
+  
+  # auroc
+  auroc_sd <- sd(store_boot$auroc)
+  auroc_ci <- c(baseline_auroc - 2*auroc_sd, baseline_auroc + 2*auroc_sd)
+  kappa_auroc <- auroc_ci[2] - auroc_ci[1]
+
+  # comparison
+  compare_sd <- sd(store_boot$compare_metric)
+  compare_ci <- c(baseline_compare - 2*compare_sd, baseline_compare + 2*compare_sd)
+  # intercept subtracts out, so only multiply by the slope
+  compare_ci_auroc <- signal_linear$coefficients[2]*compare_ci
+  
+  raw_compare <- compare_ci[2] - compare_ci[1]
+  kappa_compare <- compare_ci_auroc[2] - compare_ci_auroc[1]
+
+  output <- data.frame(
+    prevalence = mean(baseline_effects$outcome),
+    number_resolved = number_resolved,
+    baseline_auroc = baseline_auroc,
+    baseline_compare = baseline_compare,
+    kappa_auroc = kappa_auroc,
+    raw_compare = raw_compare,
+    kappa_compare = kappa_compare,
+    slope_approx = signal_linear$coefficients[2],
+    severity.ratio = severity.ratio
+  )
+  
+  rownames(output) <- NULL
+  output
+  
+}
+
+
+```
+
+
+```{r xgboost simulation experiment, eval=FALSE}
+# save results
+save_results = TRUE
+est_power = TRUE
+fname_baseline = "xgb_baseline_rpower.csv"
+fname_test = "xgb_tuning_experiment.csv"
+
+# simulation set-up
+rseed = 1772 
+set.seed(rseed)
+nsim <- 500
+
+# default parameters
+param_list <- list(
+  eta = NA,
+  gamma = 0,
+  max_depth = 6,
+  min_child_weight = 1,
+  max_delta_step = 0,
+  subsample = 1,
+  colsample_bytree = 1,
+  lambda = 1,
+  alpha = 0
+)
+
+# baseline parameters
+rounds_baseline = 25
+eta_baseline = 0.1
+
+# store training estimates of resolving power
+training_power <- data.frame(iter=1:nsim, kappa_roc=NA, kappa_prc=NA)
+
+# first is the validation measure, second is test performance
+test_results <- data.frame(iter=1:nsim,
+                           top_agree=NA,
+                           roc_params=NA,
+                           roc_est=NA,
+                           roc_roc=NA,
+                           roc_prc=NA,
+                           prc_params=NA,
+                           prc_est=NA,
+                           prc_roc=NA,
+                           prc_prc=NA
+                           )
+
+for (j in 1:nsim) {
+  
+  # track best model
+  best_roc = 0.5
+  best_roc_index = 1
+  
+  best_prc = .05
+  best_prc_index = 1
+  
+  # 3-way split
+  kfolds <- 20
+  fold_list <- createFolds(as.factor(DV), k = kfolds)
+  
+  train_index <- unlist(fold_list[1:3])
+  valid_index <- unlist(fold_list[4])
+  test_index <- unlist(fold_list[5:kfolds])
+  
+  ####
+  # split data
+  train_mat <- mod_mat[train_index, ]
+  train_DV <- DV[train_index]
+  
+  valid_mat <- mod_mat[valid_index, ]
+  valid_DV <- DV[valid_index]
+  
+  test_mat <- mod_mat[test_index, ]
+  test_DV <- DV[test_index]
+  
+  ####
+  # baseline resolving power
+  
+  if (est_power) {
+    param_list$eta <- eta_baseline
+    
+    # baseline model
+    xgb_train <- xgboost::xgboost(train_mat, train_DV, params = param_list, nrounds = rounds_baseline, booster = "gbtree", objective = "binary:logitraw", verbose = 0)
+    
+    # baseline effects
+    xgb_valid <- predict(xgb_train, valid_mat)
+    baseline_effects <- data.frame(outcome = valid_DV, risk_score = xgb_valid)
+    
+    prc_rpower <- rpower(compare_metric = "auprc",
+                         baseline_effects = baseline_effects,
+                         auroc_step = .001,
+                         noise_sim = 500)
+    
+    training_power[j,-1] <- c(prc_rpower$kappa_auroc, prc_rpower$kappa_compare)
+    
+  }
+  
+  ####
+  # new tuning grid
+  tune_grid <- data.frame(
+    num_rounds = sample(25:150, size = 6, replace = FALSE), 
+    eta = runif(6, .01, .3) 
+    )
+  
+  for( i in 1:nrow(tune_grid) ) {
+    
+    param_list$eta = tune_grid$eta[i]
+    next_rounds <- tune_grid$num_rounds[i]
+    
+    xgb_train <- xgboost::xgboost(train_mat, train_DV, params = param_list, nrounds = next_rounds, booster = "gbtree", objective = "binary:logitraw", verbose = 0)
+    
+    xgb_valid <- predict(xgb_train, valid_mat)
+    
+    # tuning results
+    roc_valid <- metric_calc(xgb_valid, valid_DV, "auroc")
+    prc_valid <- metric_calc(xgb_valid, valid_DV, "auprc")
+
+    # test for best tuning result
+    if (roc_valid > best_roc) {
+      best_roc_index = i
+      best_roc = roc_valid
+      best_roc_model = xgb_train
+      best_roc_params = paste(round(tune_grid$eta[best_roc_index],2), tune_grid$num_rounds[best_roc_index], sep=", ")
+    }
+    
+    if (prc_valid > best_prc) {
+      best_prc_index = i
+      best_prc = prc_valid
+      best_prc_model = xgb_train
+      best_prc_params = paste(round(tune_grid$eta[best_prc_index],2), tune_grid$num_rounds[best_prc_index], sep=", ")
+    }
+    
+    cat("*")
+  }
+  
+  ####
+  # see if there is a disagreement in ranks and record
+  top_agree <- best_roc_index == best_prc_index
+  test_results$top_agree[j] <- top_agree
+  
+  ####
+  # fit best
+  
+  # one model if agreement in tuning
+  if (top_agree) {
+    best_scores <- predict(best_roc_model, test_mat)
+    roc_test <- metric_calc(best_scores, outcome = test_DV, metric_name = "auroc")
+    prc_test <- metric_calc(best_scores, outcome = test_DV, metric_name = "auprc")
+    
+    test_results[j, c("roc_params", "prc_params")] <- c(best_roc_params, best_prc_params)
+    
+    test_results[j, c("roc_est", "roc_roc", "roc_prc", "prc_est", "prc_roc", "prc_prc")] <- c(best_roc, roc_test, prc_test, best_prc, roc_test, prc_test)
+
+  } else {
+    # roc final model
+    roc_scores <- predict(best_roc_model, test_mat)
+    roc_test_roc <- metric_calc(roc_scores, outcome = test_DV, metric_name = "auroc")
+    roc_test_prc <- metric_calc(roc_scores, outcome = test_DV, metric_name = "auprc")
+  
+    test_results[j, "roc_params"] <- best_roc_params
+    test_results[j, c("roc_est", "roc_roc", "roc_prc")] <- c(best_roc, roc_test_roc, roc_test_prc)
+  
+  # prc final model
+  prc_scores <- predict(best_prc_model, test_mat)
+  prc_test_roc <- metric_calc(prc_scores, outcome = test_DV, metric_name = "auroc")
+  prc_test_prc <- metric_calc(prc_scores, outcome = test_DV, metric_name = "auprc")
+  
+  test_results[j, "prc_params"] <- best_prc_params
+  test_results[j, c("prc_est", "prc_roc", "prc_prc")] <- c(best_prc, prc_test_roc, prc_test_prc)
+    
+  }
+  
+  cat(paste(" ", j, "of", nsim, "iterations complete\n"))
+  
+}
+
+if(save_results) {
+  write_csv(training_power, file = fname_baseline)
+  write_csv(test_results, file = fname_test)
+}
+
+```
+
+
+```{r import simulation results}
+baseline_results <- read_csv("xgb_baseline_rpower.csv")
+test_results <- read_csv("xgb_tuning_experiment.csv")
+
+```
+
+
+```{r simulation train results, include=FALSE}
+# Does auroc always have better resolving power
+all(baseline_results$kappa_roc < baseline_results$kappa_prc)
+roc_better_indicator <- baseline_results$kappa_roc < baseline_results$kappa_prc
+roc_rpower_better <- sum(roc_better_indicator)
+
+# compare resolving power estimates from the baseline model
+baseline_summary <- baseline_results %>% 
+  mutate(
+    rpower_roc = 1/kappa_roc,
+    rpower_prc = 1/kappa_prc
+  ) %>% 
+  summarise(
+    roc_mean = mean(rpower_roc),
+    roc_median = median(rpower_roc),
+    prc_mean = mean(rpower_prc),
+    prc_median = median(rpower_prc)
+  )
+
+# average advantage
+baseline_summary$roc_mean/baseline_summary$prc_mean
+
+# change names for a pretty table
+#names(baseline_summary) <- c("ROC mean", "ROC median", "PRC mean", "PRC median")
+
+```
+
+
+```{r simulation test results, include=FALSE}
+# remove trial where prc has better resolving power
+test_results <- test_results %>% 
+  filter(roc_better_indicator)
+
+# proportion agreement
+num_agree <- sum(test_results$top_agree)
+prop_agree <- mean(test_results$top_agree)
+percent_agree <- round(100*prop_agree)
+
+# trials where the predictions disagree. Also keep only trials with kappa_roc < kappa_prc
+disagree_results <- test_results %>% 
+  filter(!top_agree)
+
+# compare performance
+mean(disagree_results$roc_roc > disagree_results$prc_roc)
+mean(disagree_results$roc_prc > disagree_results$prc_prc)
+
+####
+# binomial test
+
+# number better when tuning with ROC: hypothesis tests
+roc_better <- sum(disagree_results$roc_roc > disagree_results$prc_roc)
+binom.test(roc_better, nrow(disagree_results), p = 0.5)
+roc_better_percent <- round(100*mean(disagree_results$roc_roc > disagree_results$prc_roc))
+
+prc_better <- sum(disagree_results$roc_prc > disagree_results$prc_prc)
+binom.test(prc_better, nrow(disagree_results), p = 0.5)
+prc_better_percent <- round(100*mean(disagree_results$roc_prc > disagree_results$prc_prc))
+
+####
+# t-tests:
+
+# independent samples
+t.test(disagree_results$roc_roc, disagree_results$prc_roc)
+t.test(disagree_results$roc_prc, disagree_results$prc_prc)
+
+# dependent samples
+t.test(disagree_results$roc_roc - disagree_results$prc_roc)
+t.test(disagree_results$roc_prc - disagree_results$prc_prc)
+
+
+```
+
+
+```{r test_summary}
+# shows that when there is disagreement, the ROC selection does about as good a job as when agreement while the PRC takes a hit.
+test_summary <- test_results %>% 
+  rename(
+    agree = top_agree
+  ) %>% 
+  group_by(agree) %>% 
+  summarise(
+    avg_roc_roc = mean(roc_roc),
+    avg_prc_roc = mean(prc_roc),
+    avg_roc_prc = mean(roc_prc),
+    avg_prc_prc = mean(prc_prc)
+  ) %>% 
+  mutate(across(.cols = -agree, ~ round(., 4)))
+
+names(test_summary)[-1] <- c("tune ROC, test ROC", "tune PRC, test ROC", 
+                             "tune ROC, test PRC", "tune PRC, test PRC")
+
+table_caption = paste0("The top row gives the average performance for trials where ROC and PRC model choice disagrees. Disagreement occurred on ", nrow(disagree_results), " out of ", nrow(test_results), " total trials. The bottom row gives performance on the trials where the two metrics agree.")
+
+kableExtra::kbl(test_summary, caption = table_caption, escape = FALSE, align = "c") %>% 
+  row_spec(0, bold=TRUE) %>% 
+  column_spec(2:5, width = "2cm")
+
+
+```
 
 
 
@@ -1326,7 +1922,7 @@ kableExtra::kbl(sim_results_summary, caption = "Simulation results summary. Lowe
 
 ### A. Linear approximation method for resolving power
 
-```{r response curve derivative}
+```{r signal curve derivative}
 #----
 # deriv_auroc
 #
@@ -1368,21 +1964,25 @@ tangent_data <- data.frame(AUSGC = ausgc_grid,
                            AUROC = auroc_grid)
 
 
-
 ####
 # alt resolution plot
 alt_plot <- ggplot(metric_data, aes(ausgc, auroc)) +
   geom_path(color="black") +
   xlab("AUSGC") +
   ylab("AUROC") +
-  geom_point(mapping = aes(ausgc_eval, auroc_eval), data = plot_data, size=3) +
+  geom_point(mapping = aes(ausgc_eval, auroc_eval), data = plot_data, size=1.5) +
   geom_line(aes(AUSGC, AUROC), data = tangent_data, color="red") +
   theme_bw() +
+  theme(
+    legend.box = "horizontal",
+    axis.title = element_text(size=axis_title_size),
+    axis.text = element_text(size=axis_text_size),
+  ) +
   NULL
 
 ```
 
-```{r alt_resolution, fig.width=4, fig.height=2.5, fig.cap="\\label{fig:alt_resolution}Response curve plotting the AUROC references scale on the y-axis. A linear approximation of the response function at the evaluation point is shown in red."}
+```{r alt_resolution, fig.width=2.5, fig.height=1.5, fig.cap="\\label{fig:alt_resolution}Signal curve plotting the AUROC reference scale on the y-axis. A linear approximation of the signal function at the evaluation point is shown in red."}
 alt_plot
 ```
 
@@ -1476,18 +2076,19 @@ plot_data <- gauss_results %>%
 ```{r N1k results comparison plot}
 pop_auroc <- unique(plot_data$pop_auroc)
 
-plot_relative <- ggplot(plot_data, aes(prevalence, ci_ratio, fill=prevalence)) +
+plot_relative_1k <- ggplot(plot_data, aes(prevalence, ci_ratio, fill=prevalence)) +
   facet_wrap( ~ model_quality, nrow = 1) +
   geom_col() +
   scale_x_discrete(labels = c(".01", ".05", ".10", ".20", ".30", ".40", ".50")) +
   ylab(~ paste(kappa["AUPRC"], "/", kappa["AUROC"], " - 1")) +
-  theme_bw()
-
-```
-
-```{r N1k_compare, fig.width=8, fig.height=2.5, fig.cap="\\label{fig:N1k_compare}Relative resolution of AUPRC versus AUROC by outcome prevalence and model quality for a binormal model with a sample size of N = 1000. At each level of model quality 10,000 simulations are taken from the sampling model. Confidence limits are found from the .025 and .975 quantile values of the simulation samples."}
-
-plot_relative
+  theme_bw() + 
+  theme(
+    axis.text = element_text(size = rr_axis_text_size),
+    axis.title = element_text(size = rr_axis_title_size)
+        ) +
+  guides(fill="none") +
+  ylim(c(-.15, .35)) +
+  NULL
 
 ```
 
@@ -1576,21 +2177,29 @@ plot_data <- gauss_results %>%
 
 ```
 
-
 ```{r N100k results comparison plot}
 pop_auroc <- unique(plot_data$pop_auroc)
 
-plot_relative <- ggplot(plot_data, aes(prevalence, ci_ratio, fill=prevalence)) +
+plot_relative_100k <- ggplot(plot_data, aes(prevalence, ci_ratio, fill=prevalence)) +
   facet_wrap( ~ model_quality, nrow = 1) +
   geom_col() +
   scale_x_discrete(labels = c(".01", ".05", ".10", ".20", ".30", ".40", ".50")) +
   ylab(~ paste(kappa["AUPRC"], "/", kappa["AUROC"], " - 1")) +
-  theme_bw()
+  theme_bw() +
+  theme(
+    axis.text = element_text(size = rr_axis_text_size),
+    axis.title = element_text(size = rr_axis_title_size)
+        ) +
+  guides(fill="none") +
+  ylim(c(-.15, .35)) +
+  NULL
 
 ```
 
-```{r N100k_compare, fig.width=8, fig.height=2.5, fig.cap="\\label{fig:N100k_compare}Relative metric resolution by outcome prevalence and model quality for a binormal model with a sample size of N = 100,000. At each level of model quality 10,000 simulations are taken from the sampling model. Confidence limits are found from the .025 and .975 quantile values of the simulation samples."}
+```{r additional_binormal, fig.width=5, fig.height=3.5, fig.cap="\\label{fig:additional_binormal}Relative metric resolution by outcome prevalence and model quality for a binormal model with a sample size of top panel: N = 1000 and bottom panel: N = 100,000. At each level of model quality 10,000 simulations are taken from the sampling model. Confidence limits are the .025 and .975 quantile values of the simulation samples."}
 
-plot_relative
+ggarrange(plots = list(plot_relative_1k, plot_relative_100k), nrow=2)
 
 ```
+
+
